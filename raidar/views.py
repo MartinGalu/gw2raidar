@@ -714,7 +714,7 @@ def profile_graph(request):
 
 
 @require_GET
-def named(request, name, no):
+def named(request, name, no=None):
     return index(request, { 'name': name, 'no': int(no) if type(no) == str else no })
 
 @login_required
