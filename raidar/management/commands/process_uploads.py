@@ -371,10 +371,15 @@ class Command(BaseCommand):
         except Exception as e:
             logger.info("unknown error: %s" % str(e))
             exc = format_exc()
-            path = os.path.join(upload_dir, 'errors')
-            os.makedirs(path, exist_ok=True)
-            path = os.path.join(path, os.path.basename(diskname))
-            os.rename(diskname, path)
+            error_path = os.path.join(upload_dir, 'errors')
+            os.makedirs(error_path, exist_ok=True)
+            path = os.path.join(error_path, os.path.basename(diskname))
+            try:
+                os.rename(diskname, path)
+            except PermissionError:
+                logger.info("No permission to rename file: %s, copy instead" % diskname)
+                shutil.copyfile(diskname, path)
+
             with open(path + '.error', 'w') as f:
                 f.write("%s (%s)\n" % (upload.filename, upload.uploaded_by.username))
                 f.write(exc)
