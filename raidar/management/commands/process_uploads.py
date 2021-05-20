@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 from django.db.models import Q
+=======
+import shutil
+
+>>>>>>> dev_tmp
 from analyser.analyser import Analyser, Group, Archetype, EvtcAnalysisException
 from analyser.bosses import *
 from multiprocessing import Queue, Process, log_to_stderr
