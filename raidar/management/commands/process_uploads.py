@@ -108,6 +108,7 @@ def single_process(name):
         pid_var = Variable.objects.create(key='%s_pid' % name, val=os.getpid())
     except IntegrityError:
         # already running
+        logger.info('Already Running')
         exit()
 
     try:
