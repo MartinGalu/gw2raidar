@@ -203,7 +203,8 @@ class Encounter:
         agents_string = file.read(dtype.itemsize * num_agents)
         
         self.agents = pd.DataFrame(np.fromstring(agents_string, dtype=dtype, count=num_agents))
-        split = self.agents.name.str.split(b'\x00:?', expand=True)
+        self.agents['name'] = self.agents['name'].str.decode("utf-8")
+        split = self.agents.name.str.split('\x00:?', expand=True)
         if len(split.columns) > 1:
             self.agents['name'] = split[0].str.decode(ENCODING)
             self.agents['account'] = split[1].str.decode(ENCODING)
