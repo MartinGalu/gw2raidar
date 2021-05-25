@@ -1,65 +1,87 @@
-#from analyser.analyser import Analyser, Group, Archetype, EvtcAnalysisException
-#from Crypto import Random
-#from multiprocessing import Queue, Process, log_to_stderr
-#from contextlib import contextmanager
 from django.core.management.base import BaseCommand, CommandError
-#from django.db import transaction
-#from django.db.utils import IntegrityError
-#from evtcparser.parser import Encounter as EvtcEncounter, EvtcParseException
-#from gw2raidar import settings
-#from json import loads as json_loads, dumps as json_dumps
 from raidar.models import *
-#from sys import exit, stderr
 from time import time
-#from zipfile import ZipFile, BadZipFile
-#from queue import Empty
 import os
 import os.path
 import logging
 import re
-#import signal
-#from traceback import format_exc
-
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+
+
+# Command to reupload logs that threw errors
+def reupload(*args, **options):
+    logger.info('Reuploading...')
+    upload_path = os.path.relpath("uploads")
+    error_path = os.path.join(upload_path, "errors")
+
+    verbose = True if options['verbosity'] >= 2 else False
+
+    # if no files specified, get all error logs from error folder
+    if options['files'] is not None:
+        files = options['files']
+    else:
+        files = os.listdir(error_path)
+
+    # create set of unique zevtc logs
+    files = set(re.sub(r'\.error', '', file) for file in files)
+
+    for filename in files:
+        # append ending if necessary
+        if not filename.endswith('.zevtc'):
+            filename = filename + ".zevtc"
+
+        filepath = os.path.join(error_path, filename)
+
+        # Skip folders
+        if not os.path.isfile(filepath):
+            logger.error('Path is not a file: ' + filepath)
+            continue
+
+        try:
+            with open(filepath + '.error', 'r') as f:
+                logger.info('Reading ' + filename)
+                # extract original name and user from matching error log
+                match = re.match(r"(.*) \((.*?)\)", f.readline().rstrip())
+                orig_name = match.group(1)
+                username = match.group(2)
+        except FileNotFoundError:
+            logger.error('File not found: ' + filepath)
+            continue
+
+        # reupload the log
+        user = User.objects.get(username=username)
+        upload_time = os.path.getmtime(filepath)
+        upload, _ = Upload.objects.update_or_create(
+            filename=orig_name, uploaded_by=user,
+            defaults={"uploaded_at": upload_time})
+
+        # cleanup error files
+        new_diskname = upload.diskname()
+        os.makedirs(os.path.dirname(new_diskname), exist_ok=True)
+        os.rename(filepath, new_diskname)
+        os.remove(filepath + '.error')
+
 
 class Command(BaseCommand):
     help = 'Reupload EVTC files'
 
     def add_arguments(self, parser):
-        parser.add_argument('files',
-            nargs='+',
-            help='EVTC files to reupload')
+        parser.add_argument('--files',
+                            nargs='+',
+                            help='EVTC files to reupload',
+                            required=False)
 
     def handle(self, *args, **options):
+        if options['verbosity'] == 2:
+            logger.setLevel(logging.ERROR)
+        elif options['verbosity'] == 3:
+            logger.setLevel(logging.INFO)
         start = time()
-        self.reupload(*args, **options)
+        logger.info('Starting', start)
+        reupload(*args, **options)
         end = time()
 
         if options['verbosity'] >= 3:
             print()
             print("Completed in %ss" % (end - start))
-
-    def reupload(self, *args, **options):
-        files = set(re.sub(r'\.error', '', file) for file in options['files'])
-        for filename in files:
-            try:
-                with open(filename + '.error', 'r') as f:
-                    if options['verbosity'] >= 2:
-                        print(filename)
-                    match = re.match(r"(.*) \((.*?)\)", f.readline().rstrip())
-                    orig_name = match.group(1)
-                    username = match.group(2)
-            except FileNotFoundError:
-                continue
-
-            user = User.objects.get(username=username)
-            upload_time = os.path.getmtime(filename)
-            upload, _ = Upload.objects.update_or_create(
-                    filename=orig_name, uploaded_by=user,
-                    defaults={"uploaded_at": upload_time})
-            diskname = upload.diskname()
-            os.makedirs(os.path.dirname(diskname), exist_ok=True)
-            os.rename(filename, diskname)
-            os.remove(filename + '.error')
