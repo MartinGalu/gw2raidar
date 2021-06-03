@@ -118,6 +118,18 @@ AGENT_20180724_DTYPE = np.dtype([
     ('name', '|S64'),
 ], True)
 
+AGENT_DEFAULT_DTYPE = np.dtype([ # from 03/06/2021, https://www.deltaconnected.com/arcdps/evtc/writeencounter.cpp
+    ('addr', np.uint64),
+    ('prof', np.uint32),
+    ('elite', np.uint32),
+    ('toughness', np.uint16),
+    ('concentration', np.uint16),
+    ('hitbox_width', np.uint16),
+    ('condition', np.uint16),
+    ('hitbox_height', np.uint16),
+    ('name', '|S64')
+], True)
+
 SKILL_DTYPE = np.dtype([
         ('id', np.int32),
         ('name', 'S64'),
@@ -198,7 +210,10 @@ class Encounter:
         self.version = version.decode(ENCODING).rstrip('\0')
 
     def _read_agents(self, file):
-        dtype = AGENT_20180724_DTYPE
+        if self.version == B'20180724':
+            dtype = AGENT_20180724_DTYPE
+        else:
+            dtype = AGENT_20180724_DTYPE
         num_agents, = struct.unpack("<i", file.read(4))
         agents_string = file.read(dtype.itemsize * num_agents)
         
@@ -206,8 +221,8 @@ class Encounter:
         self.agents['name'] = self.agents['name'].str.decode("utf-8")
         split = self.agents.name.str.split('\x00:?', expand=True)
         if len(split.columns) > 1:
-            self.agents['name'] = split[0].str.decode(ENCODING)
-            self.agents['account'] = split[1].str.decode(ENCODING)
+            self.agents['name'] = split[0]
+            self.agents['account'] = split[1]
             self.agents['party'] = split[2].fillna(0).astype(np.uint8)
         else:
             self.agents['account'] = None
