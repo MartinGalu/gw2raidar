@@ -192,7 +192,7 @@ class Encounter:
     def _read_header(self, file):
         if len(file.peek(16)) < 16:
             raise EvtcParseException("Not an EVTC file")
-        evtc, version, self.area_id, self.revision = struct.unpack("<4s9sHB", file.read(16))
+        evtc, version, self.revision, self.area_id = struct.unpack("<4s8s?Hx", file.read(16))
         if evtc != b"EVTC":
             raise EvtcParseException("Not an EVTC file")
         self.version = version.decode(ENCODING).rstrip('\0')
