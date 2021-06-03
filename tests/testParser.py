@@ -7,6 +7,7 @@ from zipfile import ZipFile
 
 TEST_DIRECTORY = './tests/testLogs'
 
+
 class ParserTest(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -24,8 +25,14 @@ class ParserTest(TestCase):
         self.assertGreater(len(self.testFiles), 0)
 
     def test_singleFile(self):
-        file = None
         filename = self.testFiles[0]
+        self.parseEncounter(filename)
+
+    def test_AllFiles(self):
+        for filename in self.testFiles:
+            self.parseEncounter(filename)
+
+    def parseEncounter(self, filename):
         if filename.endswith(".zip") or filename.endswith(".zevtc"):
             zipfile = ZipFile(filename)
             contents = zipfile.infolist()
@@ -33,7 +40,9 @@ class ParserTest(TestCase):
                 file = zipfile.open(contents[0].filename)
         else:
             file = open(filename)
-
         firstenc = parser.Encounter(file)
         self.assertIsNotNone(firstenc)
-        print(firstenc.agents)
+        players = firstenc.agents[firstenc.agents['account'] != -1]
+        self.assertGreater(len(players), 0)
+        self.assertLessEqual(len(players), 50)
+        print(players)
