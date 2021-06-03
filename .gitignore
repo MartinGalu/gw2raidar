@@ -28,6 +28,8 @@
 # secret stuff
 /credentials
 
+# Test logs
+/tests/testLogs
 
 config.codekit3
 *.map
